@@ -1,0 +1,47 @@
+# Maven build output
+/target/
+/.apt_generated/
+/.apt_generated_tests/
+/bin/
+
+# Dependency jars (use Maven instead)
+/dependency/
+*.jar
+
+# Compiled class files only
+*.class
+
+# IDE (non-Eclipse)
+.vscode/
+*.iml
+.idea/
+
+# Upgrade tool artifacts
+.github/java-upgrade/
+
+# Logs
+logs/
+*.log
+
+# Keys / secrets (never commit)
+default-key.txt
+*.key
+*.pfx
+*.p12
+
+# Dev notes
+Note.txt
+Notes/
+dependency-tree.txt
+
+# gui nodes
+node_modules/
+.next/
+out/
+
+# google credential
+src/main/resources/security/google_credential/application-secret.properties
+
+# Frontend build
+/frontend/.next/
+/frontend/node_modules/

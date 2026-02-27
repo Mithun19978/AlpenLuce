@@ -1,0 +1,20 @@
+S.No,End Point,Permission,Method,Role
+1,/,PERMIT_ALL,GET,3
+2,/index.html,PERMIT_ALL,GET,3
+3,/Index.html,PERMIT_ALL,GET,3
+4,/index,PERMIT_ALL,GET,3
+5,/favicon.ico,PERMIT_ALL,GET,3
+6,/robots.txt,PERMIT_ALL,GET,3
+7,/manifest.json,PERMIT_ALL,GET,3
+8,/error,PERMIT_ALL,GET,3
+9,/css/**,PERMIT_ALL,GET,3
+10,/js/**,PERMIT_ALL,GET,3
+11,/images/**,PERMIT_ALL,GET,3
+12,/assets/**,PERMIT_ALL,GET,3
+13,/fonts/**,PERMIT_ALL,GET,3
+14,/static/**,PERMIT_ALL,GET,3
+15,/login.html,PERMIT_ALL,GET,3
+16,/register.html,PERMIT_ALL,GET,3
+17,/forgetPassword.html,PERMIT_ALL,GET,3
+18,/updatePassword.html,PERMIT_ALL,GET,3
+19,/unauthorized.html,PERMIT_ALL,GET,3

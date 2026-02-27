@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="true">
+    <!-- Define properties from log.properties -->
+    <springProperty name="LOG_HOME"    source="logging.file.path"         defaultValue="D:/PERSONAL/shop/devops/logs"/>
+    <springProperty name="ARCHIVE_HOME" source="logging.file.archive-path" defaultValue="D:/PERSONAL/shop/devops/logs/logsBackUp"/>
+    <springProperty name="FILE_PATTERN" source="logging.pattern.file"      defaultValue="%d{yyyy-MM-dd HH:mm:ss.SSS} %p %c{1} [%t] %m%n"/>
+    <springProperty name="MAX_FILE_SIZE"   source="logging.file.max-size"       defaultValue="10MB"/>
+    <springProperty name="TOTAL_SIZE_CAP"  source="logging.file.total-size-cap" defaultValue="100MB"/>
+    <springProperty name="APPLICATION_LOG_FILE"           source="logging.file.name.application"           defaultValue="application-service.log"/>
+    <springProperty name="APPLICATION_EXCEPTION_LOG_FILE" source="logging.file.name.application-exception" defaultValue="application-exception.log"/>
+    <springProperty name="DATABASE_LOG_FILE"           source="logging.file.name.database"           defaultValue="database-service.log"/>
+    <springProperty name="DATABASE_EXCEPTION_LOG_FILE" source="logging.file.name.database-exception" defaultValue="database-exception.log"/>
+    <springProperty name="FILTER_LOG_FILE"           source="logging.file.name.filter"           defaultValue="filter-service.log"/>
+    <springProperty name="FILTER_EXCEPTION_LOG_FILE" source="logging.file.name.filter-exception" defaultValue="filter-exception.log"/>
+    <springProperty name="HTTP_LOG_FILE"           source="logging.file.name.http"           defaultValue="SSL-service.log"/>
+    <springProperty name="HTTP_EXCEPTION_LOG_FILE" source="logging.file.name.http-exception" defaultValue="SSL-exception.log"/>
+
+    <!-- Console Appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Application Log Appender (INFO and above) -->
+    <appender name="APPLICATION_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${APPLICATION_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${APPLICATION_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Application Exception Appender (ERROR only) -->
+    <appender name="APPLICATION_EXCEPTION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${APPLICATION_EXCEPTION_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${APPLICATION_EXCEPTION_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- Database Log Appender (INFO and above) -->
+    <appender name="DATABASE_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${DATABASE_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${DATABASE_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Database Exception Appender (ERROR only) -->
+    <appender name="DATABASE_EXCEPTION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${DATABASE_EXCEPTION_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${DATABASE_EXCEPTION_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- Filter Log Appender (INFO and above) -->
+    <appender name="FILTER_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${FILTER_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${FILTER_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Filter Exception Appender (ERROR only) -->
+    <appender name="FILTER_EXCEPTION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${FILTER_EXCEPTION_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${FILTER_EXCEPTION_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- HTTP/SSL Log Appender (INFO and above) -->
+    <appender name="HTTP_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${HTTP_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${HTTP_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- HTTP/SSL Exception Appender (ERROR only) -->
+    <appender name="HTTP_EXCEPTION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${HTTP_EXCEPTION_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_HOME}/%d{yyyy-MM-dd}/${HTTP_EXCEPTION_LOG_FILE}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- Loggers — must match actual class names in com.shop.demo.logMaintain -->
+    <logger name="com.shop.demo.logMaintain.ApplicationLogger" level="DEBUG" additivity="false">
+        <appender-ref ref="APPLICATION_LOG"/>
+        <appender-ref ref="APPLICATION_EXCEPTION"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="com.shop.demo.logMaintain.DatabaseLogger" level="DEBUG" additivity="false">
+        <appender-ref ref="DATABASE_LOG"/>
+        <appender-ref ref="DATABASE_EXCEPTION"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="com.shop.demo.logMaintain.FilterLogger" level="DEBUG" additivity="false">
+        <appender-ref ref="FILTER_LOG"/>
+        <appender-ref ref="FILTER_EXCEPTION"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="com.shop.demo.logMaintain.SslAndSecurityLogger" level="DEBUG" additivity="false">
+        <appender-ref ref="HTTP_LOG"/>
+        <appender-ref ref="HTTP_EXCEPTION"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <root level="DEBUG">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
