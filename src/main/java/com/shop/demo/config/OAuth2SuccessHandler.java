@@ -2,6 +2,7 @@ package com.shop.demo.config;
 
 import com.shop.demo.database.entity.project.UserEntity;
 import com.shop.demo.database.repository.projectRepository.UserRepository;
+import com.shop.demo.logMaintain.SslAndSecurityLogger;
 import com.shop.demo.security.jwt.JwtTokenProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,11 +23,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final SslAndSecurityLogger sslLogger;
 
     public OAuth2SuccessHandler(JwtTokenProvider jwtTokenProvider,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                SslAndSecurityLogger sslLogger) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository   = userRepository;
+        this.sslLogger        = sslLogger;
     }
 
     @Override
@@ -40,6 +44,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String name     = oauthUser.getAttribute("name");
         String googleId = (String) oauthUser.getAttribute("sub");
 
+        sslLogger.logInfo("Google OAuth2 success - email: {}, name: {}", email, name);
+
         // 1. Find by googleId → find by email → create new
         UserEntity user = userRepository.findByGoogleId(googleId)
                 .orElseGet(() -> userRepository.findByEmail(email)
@@ -49,6 +55,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         if (user.getGoogleId() == null) {
             user.setGoogleId(googleId);
             userRepository.save(user);
+            sslLogger.logInfo("Linked Google ID to existing account: {}", user.getUsername());
         }
 
         // 3. Generate tokens
@@ -62,6 +69,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         user.setRefreshTokenExpiry(LocalDateTime.now().plusDays(7));
         userRepository.save(user);
 
+        sslLogger.logAuthEvent(user.getUsername(), true);
+
         // 5. Redirect to frontend callback with tokens in query params
         String redirectUrl = UriComponentsBuilder.fromUriString("/auth/callback/")
                 .queryParam("accessToken",  URLEncoder.encode(accessToken,  StandardCharsets.UTF_8))
@@ -71,6 +80,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .build(true)
                 .toUriString();
 
+        sslLogger.logInfo("Redirecting Google user {} to callback", user.getUsername());
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 
@@ -83,13 +93,15 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             username = base + "_" + suffix++;
         }
 
+        sslLogger.logInfo("Creating new OAuth2 user: username={}, email={}", username, email);
+
         UserEntity u = new UserEntity();
         u.setUsername(username);
         u.setEmail(email);
         u.setGoogleId(googleId);
-        u.setPassword(null);      // no password for Google-only accounts
-        u.setMobileNumber(null);  // not collected during OAuth signup
-        u.setRole(1);             // default USER role
+        u.setPassword(null);
+        u.setMobileNumber(null);
+        u.setRole(1);
         u.setActive("true");
         u.setCreationTime(LocalDateTime.now());
         return userRepository.save(u);

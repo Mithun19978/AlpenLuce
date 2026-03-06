@@ -14,8 +14,11 @@ public class CartItemEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "customization_id", nullable = false)
-    private Long customizationId;
+    @Column(name = "garment_id", nullable = false)
+    private Long garmentId;
+
+    @Column(name = "size", nullable = false, length = 10)
+    private String size = "M";
 
     @Column(name = "quantity")
     private Integer quantity = 1;
@@ -30,8 +33,10 @@ public class CartItemEntity {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
-    public Long getCustomizationId() { return customizationId; }
-    public void setCustomizationId(Long customizationId) { this.customizationId = customizationId; }
+    public Long getGarmentId() { return garmentId; }
+    public void setGarmentId(Long garmentId) { this.garmentId = garmentId; }
+    public String getSize() { return size; }
+    public void setSize(String size) { this.size = size; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public LocalDateTime getAddedAt() { return addedAt; }

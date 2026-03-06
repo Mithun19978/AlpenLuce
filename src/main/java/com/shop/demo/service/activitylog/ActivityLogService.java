@@ -14,14 +14,10 @@ public interface ActivityLogService {
     void logLogin(Long userId, int roleMask, String ip);
     void logLogout(Long userId, int roleMask, String ip);
     void logRegister(Long userId, String ip);
-    void logDesignUpload(Long userId, Long customizationId, String area, String ip);
-    void logSubmitReview(Long userId, Long customizationId, String ip);
-    void logCartAdd(Long userId, Long customizationId, String ip);
+    void logCartAdd(Long userId, Long garmentId, String ip);
     void logPurchase(Long userId, Long orderId, String ip);
 
-    void logDesignApprove(Long techUserId, Long customizationId, Double price, String ip);
-    void logDesignReject(Long techUserId, Long customizationId, String reason, String ip);
-    void logGarmentAdd(Long techUserId, Long garmentId, String ip);
+    void logGarmentAdd(Long adminUserId, Long garmentId, String ip);
 
     void logTicketOpen(Long supportUserId, Long ticketId, String ip);
     void logTicketReply(Long supportUserId, Long ticketId, String ip);

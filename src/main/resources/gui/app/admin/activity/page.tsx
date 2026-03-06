@@ -3,31 +3,35 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Activity, Users, Ticket, LayoutDashboard } from 'lucide-react';
+import { Activity, Users, Ticket, Package, Megaphone, Tag, LayoutDashboard, BarChart3 } from 'lucide-react';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import { useAuthStore } from '@/lib/store';
 import { logApi } from '@/lib/api';
 import type { ActivityLog } from '@/types';
 
 const NAV_ITEMS = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/activity', label: 'Activity Logs', icon: Activity },
-  { href: '/admin/tickets', label: 'Escalated Tickets', icon: Ticket },
+  { href: '/admin/dashboard',  label: 'Dashboard',         icon: LayoutDashboard },
+  { href: '/admin/inventory',  label: 'Inventory',         icon: Package },
+  { href: '/admin/users',      label: 'Users',             icon: Users },
+  { href: '/admin/homepage',   label: 'Advertising',       icon: Megaphone },
+  { href: '/admin/categories', label: 'Categories',        icon: Tag },
+  { href: '/admin/activity',   label: 'Activity Logs',     icon: Activity },
+  { href: '/admin/tickets',    label: 'Escalated Tickets', icon: Ticket },
+  { href: '/admin/financial',  label: 'Financial',         icon: BarChart3 },
 ];
 
-const ACTION_COLORS: Record<string, string> = {
-  LOGIN: 'text-green-400',
-  LOGOUT: 'text-white/40',
-  REGISTER: 'text-blue-400',
-  DESIGN_SUBMIT: 'text-gold',
-  DESIGN_APPROVE: 'text-green-400',
-  DESIGN_REJECT: 'text-red-400',
-  TICKET_CREATE: 'text-orange-400',
-  TICKET_ESCALATE: 'text-orange-400',
-  TICKET_RESOLVE: 'text-green-400',
-  CART_ADD: 'text-gold',
-  ORDER_PLACE: 'text-gold',
+const EVENT_COLORS: Record<string, string> = {
+  login:            'text-green-400',
+  logout:           'text-white/40',
+  user_register:    'text-blue-400',
+  cart_add:         'text-gold',
+  purchase:         'text-gold',
+  garment_add:      'text-purple-400',
+  ticket_open:      'text-orange-400',
+  ticket_reply:     'text-orange-300',
+  ticket_escalate:  'text-orange-400',
+  user_role_change: 'text-red-400',
+  return_decision:  'text-green-400',
 };
 
 export default function ActivityLogsPage() {
@@ -40,9 +44,13 @@ export default function ActivityLogsPage() {
 
   useEffect(() => {
     if (!user) { router.push('/auth/login'); return; }
-    if (!(user.role & 2)) { router.push('/dashboard'); return; }
+    if (!(user.role & 2)) { router.push('/access-denied'); return; }
     logApi.getAll()
-      .then((r) => setLogs(r.data))
+      .then((r) => {
+        // backend returns Page<ActivityLogEntity>; extract .content array
+        const data = r.data;
+        setLogs(Array.isArray(data) ? data : (data?.content ?? []));
+      })
       .catch(() => setError('Failed to load logs.'))
       .finally(() => setLoading(false));
   }, [user, router]);
@@ -75,27 +83,27 @@ export default function ActivityLogsPage() {
                   <p className="text-white/30 text-center py-12 text-sm">No activity logs yet.</p>
                 ) : (
                   logs.map((log) => (
-                    <div key={log.id} className="flex items-start justify-between px-5 py-4 hover:bg-white/2 transition-colors">
+                    <div key={log.id} className="flex items-start justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
                       <div className="flex items-start gap-4">
                         <span
-                          className={`text-xs font-mono font-bold mt-0.5 ${
-                            ACTION_COLORS[log.action] ?? 'text-white/60'
+                          className={`text-xs font-mono font-bold mt-0.5 min-w-[110px] ${
+                            EVENT_COLORS[log.eventType] ?? 'text-white/60'
                           }`}
                         >
-                          {log.action}
+                          {log.eventType}
                         </span>
                         <div>
-                          <p className="text-sm">
-                            <span className="font-medium">{log.username}</span>
-                            {log.details && (
-                              <span className="text-white/40 ml-2 text-xs">{log.details}</span>
-                            )}
-                          </p>
-                          <p className="text-white/30 text-xs mt-0.5">User #{log.userId}</p>
+                          <p className="text-sm font-medium text-white/80">User #{log.userId}</p>
+                          {log.metadata && (
+                            <p className="text-white/40 text-xs mt-0.5 font-mono">{log.metadata}</p>
+                          )}
+                          {log.ipAddress && (
+                            <p className="text-white/20 text-xs mt-0.5">{log.ipAddress}</p>
+                          )}
                         </div>
                       </div>
-                      <time className="text-white/30 text-xs whitespace-nowrap ml-4">
-                        {new Date(log.timestamp).toLocaleString()}
+                      <time className="text-white/30 text-xs whitespace-nowrap ml-4 mt-0.5">
+                        {new Date(log.createdAt).toLocaleString()}
                       </time>
                     </div>
                   ))

@@ -16,6 +16,14 @@ public class FilterLogger {
         logger.error("[FILTER-ERROR] " + message, args, t);
     }
 
+    public void debug(String message, Object... args) {
+        logger.debug("[FILTER-DEBUG] " + message, args);
+    }
+
+    public void warn(String message, Object... args) {
+        logger.warn("[FILTER-WARN] " + message, args);
+    }
+
     public void logJwtValidation(String token, boolean isValid) {
         if (isValid) {
             logger.info("[FILTER-INFO] JWT Validation - Token: {}, Valid: {}", token.length() > 10 ? token.substring(0, 10) + "..." : token, isValid);

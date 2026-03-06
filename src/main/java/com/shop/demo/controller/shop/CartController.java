@@ -1,10 +1,8 @@
 package com.shop.demo.controller.shop;
 
 import com.shop.demo.database.entity.project.shop.CartItemEntity;
-import com.shop.demo.database.entity.project.shop.CustomizationEntity;
-import com.shop.demo.database.entity.project.shop.CustomizationEntity.Status;
 import com.shop.demo.database.repository.projectRepository.shop.CartItemRepository;
-import com.shop.demo.database.repository.projectRepository.shop.CustomizationRepository;
+import com.shop.demo.database.repository.projectRepository.shop.GarmentRepository;
 import com.shop.demo.logMaintain.ApplicationLogger;
 import com.shop.demo.service.activitylog.ActivityLogService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,18 +18,24 @@ import java.util.Map;
 public class CartController {
 
     private final CartItemRepository cartItemRepository;
-    private final CustomizationRepository customizationRepository;
+    private final GarmentRepository garmentRepository;
     private final ActivityLogService activityLogService;
     private final ApplicationLogger logger;
 
     public CartController(CartItemRepository cartItemRepository,
-                          CustomizationRepository customizationRepository,
+                          GarmentRepository garmentRepository,
                           ActivityLogService activityLogService,
                           ApplicationLogger logger) {
-        this.cartItemRepository      = cartItemRepository;
-        this.customizationRepository = customizationRepository;
-        this.activityLogService      = activityLogService;
-        this.logger                  = logger;
+        this.cartItemRepository = cartItemRepository;
+        this.garmentRepository  = garmentRepository;
+        this.activityLogService = activityLogService;
+        this.logger             = logger;
+    }
+
+    public static class AddToCartRequest {
+        public Long garmentId;
+        public String size;
+        public Integer quantity;
     }
 
     /** GET /server/user/cart – view cart */
@@ -42,49 +46,63 @@ public class CartController {
         return ResponseEntity.ok(cartItemRepository.findByUserId(userId));
     }
 
-    /** POST /server/user/cart – add approved customization */
+    /** POST /server/user/cart – add garment with size */
     @PostMapping
     public ResponseEntity<Map<String, String>> addToCart(
-            @RequestParam Long customizationId,
+            @RequestBody AddToCartRequest request,
             @RequestAttribute(value = "userId", required = false) Long userId,
             HttpServletRequest httpRequest) {
 
         if (userId == null) return ResponseEntity.status(401).build();
+        if (request.garmentId == null || request.size == null || request.size.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "garmentId and size are required"));
+        }
 
-        CustomizationEntity c = customizationRepository.findById(customizationId)
-                .orElse(null);
-
-        if (c == null) {
+        if (!garmentRepository.existsById(request.garmentId)) {
             return ResponseEntity.notFound().<Map<String, String>>build();
         }
-        if (c.getStatus() != Status.APPROVED) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Only approved customizations can be added to cart"));
-        }
-        if (!c.getUserId().equals(userId)) {
-            return ResponseEntity.status(403)
-                    .body(Map.of("error", "This customization does not belong to you"));
-        }
 
-        // Upsert: increment if already in cart
-        cartItemRepository.findByUserIdAndCustomizationId(userId, customizationId)
+        int qty = (request.quantity != null && request.quantity > 0) ? request.quantity : 1;
+
+        cartItemRepository.findByUserIdAndGarmentIdAndSize(userId, request.garmentId, request.size)
                 .ifPresentOrElse(
                         item -> {
-                            item.setQuantity(item.getQuantity() + 1);
+                            item.setQuantity(item.getQuantity() + qty);
                             cartItemRepository.save(item);
                         },
                         () -> {
                             CartItemEntity item = new CartItemEntity();
                             item.setUserId(userId);
-                            item.setCustomizationId(customizationId);
-                            item.setQuantity(1);
+                            item.setGarmentId(request.garmentId);
+                            item.setSize(request.size);
+                            item.setQuantity(qty);
                             cartItemRepository.save(item);
                         }
                 );
 
-        activityLogService.logCartAdd(userId, customizationId, httpRequest.getRemoteAddr());
-        logger.info("Cart add: userId={}, customizationId={}", userId, customizationId);
+        activityLogService.logCartAdd(userId, request.garmentId, httpRequest.getRemoteAddr());
+        logger.info("Cart add: userId={}, garmentId={}, size={}", userId, request.garmentId, request.size);
         return ResponseEntity.ok(Map.of("message", "Added to cart"));
+    }
+
+    /** PATCH /server/user/cart/{id} – update quantity */
+    @PatchMapping("/{id}")
+    public ResponseEntity<Map<String, String>> updateQuantity(
+            @PathVariable Long id,
+            @RequestParam int quantity,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+
+        if (userId == null) return ResponseEntity.status(401).build();
+        if (quantity < 1) return ResponseEntity.badRequest().body(Map.of("error", "Quantity must be at least 1"));
+
+        return cartItemRepository.findById(id).map(item -> {
+            if (!item.getUserId().equals(userId)) {
+                return ResponseEntity.status(403).<Map<String, String>>body(Map.of("error", "Forbidden"));
+            }
+            item.setQuantity(quantity);
+            cartItemRepository.save(item);
+            return ResponseEntity.ok(Map.of("message", "Quantity updated"));
+        }).orElse(ResponseEntity.notFound().<Map<String, String>>build());
     }
 
     /** DELETE /server/user/cart/{id} – remove item */

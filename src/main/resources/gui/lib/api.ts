@@ -87,33 +87,40 @@ export const userApi = {
 
 // ── Garments ─────────────────────────────────────────────────
 export const garmentApi = {
-  getAll: () => api.get('/garments'),
-  shopAll: () => api.get('/garments'),
-  getById: (id: number) => api.get(`/garments/${id}`),
-};
-
-// ── Customizations ───────────────────────────────────────────
-export const customizationApi = {
-  create: (data: {
-    garmentId: number;
-    notes: string;
-    layers: object[];
-  }) => api.post('/user/customizations', data),
-  getMine: () => api.get('/user/customizations'),
-  getPending: () => api.get('/technical/customizations/pending'),
-  approve: (id: number, priceInCents: number, notes: string) =>
-    api.post(`/technical/customizations/${id}/approve`, { approvedPrice: priceInCents, notes }),
-  reject: (id: number, notes: string) =>
-    api.post(`/technical/customizations/${id}/reject`, { notes }),
+  getAll:      () => api.get('/garments'),
+  shopAll:     () => api.get('/garments'),
+  getFeatured: () => api.get('/garments/featured'),  // { mens:[], womens:[], kids:[] }
+  getById:     (id: number) => api.get(`/garments/${id}`),
 };
 
 // ── Cart ─────────────────────────────────────────────────────
 export const cartApi = {
   getMine: () => api.get('/user/cart'),
-  add: (customizationId: number) =>
-    api.post('/user/cart', { customizationId }),
+  add: (garmentId: number, size: string, quantity = 1) =>
+    api.post('/user/cart', { garmentId, size, quantity }),
+  updateQty: (cartItemId: number, quantity: number) =>
+    api.patch(`/user/cart/${cartItemId}?quantity=${quantity}`),
   remove: (cartItemId: number) =>
     api.delete(`/user/cart/${cartItemId}`),
+};
+
+// ── Checkout ──────────────────────────────────────────────────
+export const checkoutApi = {
+  place: (payload: {
+    shippingName: string;
+    shippingAddress: string;
+    shippingCity: string;
+    shippingPincode: string;
+    shippingPhone: string;
+    paymentMethod: string;
+    paymentRef?: string;
+  }) => api.post('/user/checkout', payload),
+};
+
+// ── Orders ────────────────────────────────────────────────────
+export const orderApi = {
+  getMine: () => api.get('/user/orders'),
+  getById: (id: number) => api.get(`/user/orders/${id}`),
 };
 
 // ── Tickets ──────────────────────────────────────────────────
@@ -138,15 +145,61 @@ export const logApi = {
 
 // ── Categories ───────────────────────────────────────────────
 export const categoryApi = {
-  getAll: () => api.get('/admin/categories'),
+  getAll:    () => api.get('/admin/categories'),          // admin/tech: all categories
+  getActive: () => api.get('/categories'),                // authenticated users: active only
   setActive: (id: number, active: boolean) =>
     api.patch(`/admin/categories/${id}/active?active=${active}`),
+  rename: (id: number, name: string) =>
+    api.patch(`/admin/categories/${id}/rename`, { name }),
+  delete: (id: number) => api.delete(`/admin/categories/${id}`),
+  create: (payload: { name: string; parentId?: number | null }) =>
+    api.post('/admin/categories', payload),
+};
+
+// Public categories — no auth required (used in guest navbar)
+export const publicCategoryApi = {
+  getActive: () => axios.get('/api/categories'),
+};
+
+// ── Payment (Razorpay) ───────────────────────────────────────
+export const paymentApi = {
+  // Step 1: create a Razorpay order on the backend
+  createOrder: (amountInPaise: number) =>
+    api.post('/user/payment/create-order', { amountInPaise }),
+  // Step 2: verify signature + place order + trigger Shiprocket
+  verify: (payload: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    shippingName: string;
+    shippingAddress: string;
+    shippingCity: string;
+    shippingPincode: string;
+    shippingPhone: string;
+  }) => api.post('/user/payment/verify', payload),
+};
+
+// ── Image Upload (AWS S3) ─────────────────────────────────────
+export const imageApi = {
+  upload: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/admin/images/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// ── Analytics ─────────────────────────────────────────────────
+export const analyticsApi = {
+  getSummary: () => api.get('/admin/analytics/summary'),
 };
 
 // ── Garment Admin ─────────────────────────────────────────────
 export const garmentAdminApi = {
   getAll: () => api.get('/admin/garments'),
   create: (payload: object) => api.post('/admin/garments', payload),
+  bulkCreate: (requests: object[]) => api.post('/admin/garments/bulk', requests),
   update: (id: number, payload: object) => api.put(`/admin/garments/${id}`, payload),
   setActive: (id: number, active: boolean) =>
     api.patch(`/admin/garments/${id}/active?active=${active}`),

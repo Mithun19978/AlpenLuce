@@ -1,17 +1,24 @@
 CREATE DATABASE IF NOT EXISTS alpenluce;
 USE alpenluce;
 
+-- Disable FK checks so we can drop/recreate tables in any order
+-- (handles leftover legacy tables like customizations, customization_designs)
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- ===========================================================
--- DROP OBJECTS IN REVERSE DEPENDENCY ORDER
+-- DROP ALL TABLES (including any legacy ones)
 -- ===========================================================
 DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS support_tickets;
 DROP TABLE IF EXISTS cart_items;
-DROP TABLE IF EXISTS customization_designs;
 DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customization_designs;
 DROP TABLE IF EXISTS customizations;
 DROP TABLE IF EXISTS garments;
+DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS activity_logs;
+DROP TABLE IF EXISTS SPRING_SESSION_ATTRIBUTES;
+DROP TABLE IF EXISTS SPRING_SESSION;
 DROP TABLE IF EXISTS users;
 
 -- ===========================================================
@@ -64,6 +71,19 @@ CREATE TABLE activity_logs (
 );
 
 -- ===========================================================
+-- CATEGORIES (navigation tree: depth 0=main, 1=sub, 2=type)
+-- ===========================================================
+CREATE TABLE categories (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    active TINYINT(1) DEFAULT 1,
+    depth INT NOT NULL DEFAULT 0,
+    parent_id BIGINT,
+    display_order INT DEFAULT 0,
+    FOREIGN KEY (parent_id) REFERENCES categories(id)
+);
+
+-- ===========================================================
 -- GARMENTS (product catalog)
 -- ===========================================================
 CREATE TABLE garments (
@@ -71,50 +91,20 @@ CREATE TABLE garments (
     name VARCHAR(255),
     description TEXT,
     garment_type VARCHAR(100),
-    category VARCHAR(50),
+    category_id BIGINT,
     base_price INT,
     type VARCHAR(50),
     base_color VARCHAR(30),
     gsm INT,
     fabric_description VARCHAR(255),
+    sizes VARCHAR(100) DEFAULT 'S,M,L,XL,XXL',
+    image_url VARCHAR(512),
+    stock_quantity INT NOT NULL DEFAULT 0,
+    cost_price INT NOT NULL DEFAULT 0,
     active TINYINT(1) DEFAULT 1,
-    featured TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ===========================================================
--- CUSTOMIZATIONS
--- ===========================================================
-CREATE TABLE customizations (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    garment_id BIGINT NOT NULL,
-    base_color VARCHAR(30),
-    gsm INT,
-    status ENUM('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING',
-    estimated_price DECIMAL(10,2),
-    approved_by BIGINT,
-    approved_at TIMESTAMP NULL,
-    rejection_reason VARCHAR(500),
+    featured TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (garment_id) REFERENCES garments(id)
-);
-
--- ===========================================================
--- CUSTOMIZATION DESIGN AREAS
--- ===========================================================
-CREATE TABLE customization_designs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    customization_id BIGINT NOT NULL,
-    area ENUM('FRONT','BACK','LEFT_SLEEVE','RIGHT_SLEEVE') NOT NULL,
-    cloudinary_url VARCHAR(512),
-    pos_x DOUBLE DEFAULT 0,
-    pos_y DOUBLE DEFAULT 0,
-    pos_z DOUBLE DEFAULT 0,
-    scale DOUBLE DEFAULT 1,
-    rotation DOUBLE DEFAULT 0,
-    FOREIGN KEY (customization_id) REFERENCES customizations(id)
+    FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
 -- ===========================================================
@@ -123,11 +113,13 @@ CREATE TABLE customization_designs (
 CREATE TABLE cart_items (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    customization_id BIGINT NOT NULL,
+    garment_id BIGINT NOT NULL,
+    size VARCHAR(10) NOT NULL DEFAULT 'M',
     quantity INT DEFAULT 1,
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (customization_id) REFERENCES customizations(id)
+    FOREIGN KEY (garment_id) REFERENCES garments(id),
+    UNIQUE KEY uq_cart_user_garment_size (user_id, garment_id, size)
 );
 
 -- ===========================================================
@@ -138,11 +130,16 @@ CREATE TABLE orders (
     user_id BIGINT NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL,
     payment_status ENUM('PENDING','PAID','FAILED') DEFAULT 'PENDING',
-    payment_gateway VARCHAR(50),
+    payment_method VARCHAR(50),
     payment_ref VARCHAR(255),
+    shipping_name VARCHAR(255),
+    shipping_address TEXT,
+    shipping_city VARCHAR(100),
+    shipping_pincode VARCHAR(20),
+    shipping_phone VARCHAR(20),
+    order_status ENUM('PLACED','PROCESSING','SHIPPED','DELIVERED','CANCELLED') DEFAULT 'PLACED',
+    tracking_awb        VARCHAR(100),
     shiprocket_order_id VARCHAR(100),
-    shiprocket_tracking_id VARCHAR(100),
-    shipping_status VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -153,11 +150,12 @@ CREATE TABLE orders (
 CREATE TABLE order_items (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT NOT NULL,
-    customization_id BIGINT NOT NULL,
+    garment_id BIGINT NOT NULL,
+    size VARCHAR(10) NOT NULL,
     quantity INT NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (customization_id) REFERENCES customizations(id)
+    FOREIGN KEY (garment_id) REFERENCES garments(id)
 );
 
 -- ===========================================================
@@ -179,3 +177,30 @@ CREATE TABLE support_tickets (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (order_id) REFERENCES orders(id)
 );
+
+-- ===========================================================
+-- SPRING SESSION TABLES (prevents scheduler ERROR on startup)
+-- ===========================================================
+CREATE TABLE SPRING_SESSION (
+    PRIMARY_ID CHAR(36) NOT NULL,
+    SESSION_ID CHAR(36) NOT NULL,
+    CREATION_TIME BIGINT NOT NULL,
+    LAST_ACCESS_TIME BIGINT NOT NULL,
+    MAX_INACTIVE_INTERVAL INT NOT NULL,
+    EXPIRY_TIME BIGINT NOT NULL,
+    PRINCIPAL_NAME VARCHAR(100),
+    CONSTRAINT SPRING_SESSION_PK PRIMARY KEY (PRIMARY_ID)
+);
+CREATE UNIQUE INDEX SPRING_SESSION_IX1 ON SPRING_SESSION (SESSION_ID);
+CREATE INDEX SPRING_SESSION_IX2 ON SPRING_SESSION (EXPIRY_TIME);
+CREATE INDEX SPRING_SESSION_IX3 ON SPRING_SESSION (PRINCIPAL_NAME);
+
+CREATE TABLE SPRING_SESSION_ATTRIBUTES (
+    SESSION_PRIMARY_ID CHAR(36) NOT NULL,
+    ATTRIBUTE_NAME VARCHAR(200) NOT NULL,
+    ATTRIBUTE_BYTES BLOB NOT NULL,
+    CONSTRAINT SPRING_SESSION_ATTRIBUTES_PK PRIMARY KEY (SESSION_PRIMARY_ID, ATTRIBUTE_NAME),
+    CONSTRAINT SPRING_SESSION_ATTRIBUTES_FK FOREIGN KEY (SESSION_PRIMARY_ID) REFERENCES SPRING_SESSION (PRIMARY_ID) ON DELETE CASCADE
+);
+
+SET FOREIGN_KEY_CHECKS = 1;

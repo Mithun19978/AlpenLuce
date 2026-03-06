@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from './api';
-import type { AuthTokens, DesignLayer, CartItem } from '@/types';
+import type { AuthTokens, CartItem } from '@/types';
 
 // ── Auth Store ───────────────────────────────────────────────
 interface AuthState {
@@ -36,6 +36,23 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
+// ── Currency Store ───────────────────────────────────────────
+interface CurrencyState {
+  code:        string;
+  symbol:      string;
+  rate:        number;
+  detected:    boolean;
+  setCurrency: (c: { code: string; symbol: string; rate: number }) => void;
+}
+
+export const useCurrencyStore = create<CurrencyState>()((set) => ({
+  code:        'EUR',
+  symbol:      '€',
+  rate:        0.011,
+  detected:    false,
+  setCurrency: ({ code, symbol, rate }) => set({ code, symbol, rate, detected: true }),
+}));
+
 // ── Cart Store ───────────────────────────────────────────────
 interface CartState {
   items: CartItem[];
@@ -53,33 +70,3 @@ export const useCartStore = create<CartState>()((set) => ({
   clear: () => set({ items: [] }),
 }));
 
-// ── Customizer Store ─────────────────────────────────────────
-const DEFAULT_LAYERS: DesignLayer[] = [
-  { area: 'FRONT', colorHex: '#1a1a1a', designText: '', scale: 1, rotation: 0, positionX: 50, positionY: 50 },
-  { area: 'BACK', colorHex: '#1a1a1a', designText: '', scale: 1, rotation: 0, positionX: 50, positionY: 50 },
-  { area: 'LEFT_SLEEVE', colorHex: '#1a1a1a', designText: '', scale: 1, rotation: 0, positionX: 50, positionY: 50 },
-  { area: 'RIGHT_SLEEVE', colorHex: '#1a1a1a', designText: '', scale: 1, rotation: 0, positionX: 50, positionY: 50 },
-];
-
-interface CustomizerState {
-  garmentId: number | null;
-  selectedArea: string | null;
-  layers: DesignLayer[];
-  setGarmentId: (id: number | null) => void;
-  setSelectedArea: (area: string | null) => void;
-  updateLayer: (area: string, updates: Partial<DesignLayer>) => void;
-  resetLayers: () => void;
-}
-
-export const useCustomizerStore = create<CustomizerState>()((set) => ({
-  garmentId: null,
-  selectedArea: 'FRONT',
-  layers: DEFAULT_LAYERS,
-  setGarmentId: (id) => set({ garmentId: id }),
-  setSelectedArea: (area) => set({ selectedArea: area }),
-  updateLayer: (area, updates) =>
-    set((s) => ({
-      layers: s.layers.map((l) => (l.area === area ? { ...l, ...updates } : l)),
-    })),
-  resetLayers: () => set({ layers: DEFAULT_LAYERS, garmentId: null, selectedArea: 'FRONT' }),
-}));

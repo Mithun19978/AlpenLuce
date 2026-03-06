@@ -3,64 +3,63 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shirt, Plus, Pencil, Trash2, Eye, EyeOff, Globe, LayoutDashboard, Users, Activity, Ticket, Tag } from 'lucide-react';
+import { Shirt, Plus, Pencil, Trash2, Eye, EyeOff, Globe, Package, Megaphone, Users, Activity, Ticket, Tag, Upload, LayoutDashboard, BarChart3 } from 'lucide-react';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/lib/store';
-import { garmentAdminApi } from '@/lib/api';
+import { garmentAdminApi, imageApi } from '@/lib/api';
 import type { Garment } from '@/types';
 
 const NAV_ITEMS = [
-  { href: '/admin',            label: 'Overview',          icon: LayoutDashboard },
+  { href: '/admin/dashboard',  label: 'Dashboard',         icon: LayoutDashboard },
+  { href: '/admin/inventory',  label: 'Inventory',         icon: Package },
   { href: '/admin/users',      label: 'Users',             icon: Users },
-  { href: '/admin/garments',   label: 'Garments',          icon: Shirt },
-  { href: '/admin/homepage',   label: 'Home Page',         icon: Globe },
+  { href: '/admin/homepage',   label: 'Advertising',       icon: Megaphone },
   { href: '/admin/categories', label: 'Categories',        icon: Tag },
   { href: '/admin/activity',   label: 'Activity Logs',     icon: Activity },
   { href: '/admin/tickets',    label: 'Escalated Tickets', icon: Ticket },
+  { href: '/admin/financial',  label: 'Financial',         icon: BarChart3 },
 ];
 
-const CATEGORIES = ['mens', 'womens', 'kids'] as const;
-const GARMENT_TYPES = ['tshirt', 'hoodie', 'jogger', 'polo', 'sweatshirt', 'tracksuit'] as const;
+// garmentType stores the gender bucket
+const GENDER_TYPES = ['mens', 'womens', 'kids', 'gym', 'couple', 'seasonal'] as const;
+type GenderType = typeof GENDER_TYPES[number];
 
-type CategoryKey = typeof CATEGORIES[number];
-type GarmentTypeKey = typeof GARMENT_TYPES[number];
-
-const CATEGORY_LABELS: Record<CategoryKey, string> = {
+const GENDER_LABELS: Record<GenderType, string> = {
   mens: "Men's", womens: "Women's", kids: 'Kids',
-};
-const TYPE_EMOJI: Record<GarmentTypeKey, string> = {
-  tshirt: '👕', hoodie: '🧥', jogger: '👖', polo: '👔', sweatshirt: '🧣', tracksuit: '🏃',
+  gym: 'Gym & Activewear', couple: 'Couple Collection', seasonal: 'Seasonal',
 };
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 interface FormState {
   name: string;
   description: string;
-  garmentType: GarmentTypeKey | '';
-  category: CategoryKey | '';
+  garmentType: GenderType | '';
+  type: string;               // product type label (e.g. T-Shirt, Hoodie)
   basePrice: string;
   baseColor: string;
   gsm: string;
   fabricDescription: string;
+  imageUrl: string;
 }
 
 const BLANK_FORM: FormState = {
-  name: '', description: '', garmentType: '', category: '',
-  basePrice: '', baseColor: '', gsm: '', fabricDescription: '',
+  name: '', description: '', garmentType: '', type: '',
+  basePrice: '', baseColor: '', gsm: '', fabricDescription: '', imageUrl: '',
 };
 
 function formFromGarment(g: Garment): FormState {
   return {
-    name: g.name ?? '',
-    description: g.description ?? '',
-    garmentType: (g.garmentType ?? '') as GarmentTypeKey | '',
-    category: (g.category ?? '') as CategoryKey | '',
-    basePrice: g.basePrice != null ? String(g.basePrice) : '',
-    baseColor: g.baseColor ?? '',
-    gsm: g.gsm != null ? String(g.gsm) : '',
-    fabricDescription: g.fabricDescription ?? '',
+    name:               g.name ?? '',
+    description:        g.description ?? '',
+    garmentType:        (g.garmentType ?? '') as GenderType | '',
+    type:               (g.type ?? '') as string,
+    basePrice:          g.basePrice != null ? String(g.basePrice) : '',
+    baseColor:          g.baseColor ?? '',
+    gsm:                g.gsm != null ? String(g.gsm) : '',
+    fabricDescription:  g.fabricDescription ?? '',
+    imageUrl:           g.imageUrl ?? '',
   };
 }
 
@@ -75,14 +74,14 @@ export default function AdminGarmentsPage() {
   const [saving,    setSaving]    = useState(false);
 
   // form panel state
-  const [editing,   setEditing]   = useState<Garment | null>(null);   // null = new
-  const [showForm,  setShowForm]  = useState(false);
-  const [form,      setForm]      = useState<FormState>(BLANK_FORM);
+  const [editing,    setEditing]   = useState<Garment | null>(null);
+  const [showForm,   setShowForm]  = useState(false);
+  const [form,       setForm]      = useState<FormState>(BLANK_FORM);
+  const [uploading,  setUploading] = useState(false);
 
   // ── auth guard ──────────────────────────────────────────────
   useEffect(() => {
     if (!user) { router.push('/auth/login'); return; }
-    // allow admin (2) OR technical (4)
     if (!(user.role & 6)) { router.push('/dashboard'); return; }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,19 +119,19 @@ export default function AdminGarmentsPage() {
   // ── save ─────────────────────────────────────────────────────
   async function handleSave() {
     if (!form.name.trim())        { setError('Name is required.');         return; }
-    if (!form.garmentType)        { setError('Garment type is required.'); return; }
-    if (!form.category)           { setError('Category is required.');     return; }
+    if (!form.garmentType)        { setError('Gender type is required.');  return; }
     if (!form.basePrice.trim())   { setError('Base price is required.');   return; }
 
-    const payload: Partial<Garment> & { gsm?: number | null } = {
+    const payload = {
       name:               form.name.trim(),
       description:        form.description.trim(),
       garmentType:        form.garmentType,
-      category:           form.category,
+      type:               form.type.trim() || undefined,
       basePrice:          parseInt(form.basePrice, 10),
-      baseColor:          form.baseColor.trim(),
+      baseColor:          form.baseColor.trim() || undefined,
       gsm:                form.gsm ? parseInt(form.gsm, 10) : undefined,
-      fabricDescription:  form.fabricDescription.trim(),
+      fabricDescription:  form.fabricDescription.trim() || undefined,
+      imageUrl:           form.imageUrl.trim() || undefined,
     };
 
     setSaving(true);
@@ -141,14 +140,12 @@ export default function AdminGarmentsPage() {
       if (editing) {
         await garmentAdminApi.update(editing.id, payload);
         setGarments((prev) =>
-          prev.map((g) => g.id === editing.id ? ({ ...g, ...payload, active: g.active } as Garment) : g)
+          prev.map((g) => g.id === editing.id ? ({ ...g, ...payload } as Garment) : g)
         );
       } else {
-        const res = await garmentAdminApi.create(payload);
-        // reload to get full object with id
+        await garmentAdminApi.create(payload);
         const fresh = await garmentAdminApi.getAll();
         setGarments(fresh.data);
-        void res;
       }
       closeForm();
     } catch {
@@ -170,7 +167,7 @@ export default function AdminGarmentsPage() {
     }
   }
 
-  // ── toggle featured (home page visibility) ───────────────────
+  // ── toggle featured ──────────────────────────────────────────
   async function handleToggleFeatured(g: Garment) {
     try {
       await garmentAdminApi.setFeatured(g.id, !g.featured);
@@ -193,18 +190,35 @@ export default function AdminGarmentsPage() {
     }
   }
 
-  // ── helper ───────────────────────────────────────────────────
   function field(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  // ── group by category ────────────────────────────────────────
-  const grouped = CATEGORIES.map((cat) => ({
-    cat,
-    label: CATEGORY_LABELS[cat],
-    items: garments.filter((g) => g.category === cat),
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      const res = await imageApi.upload(file);
+      field('imageUrl', res.data.url);
+    } catch {
+      setError('Image upload failed. Check S3 configuration.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  // ── group by garmentType (gender bucket) ─────────────────────
+  const grouped = GENDER_TYPES.map((gt) => ({
+    gt,
+    label: GENDER_LABELS[gt],
+    items: garments.filter((g) => g.garmentType === gt),
   }));
-  const uncategorised = garments.filter((g) => !CATEGORIES.includes(g.category as CategoryKey));
+  const uncategorised = garments.filter(
+    (g) => !GENDER_TYPES.includes(g.garmentType as GenderType)
+  );
 
   return (
     <div className="min-h-screen pt-20 px-4 pb-12">
@@ -257,36 +271,30 @@ export default function AdminGarmentsPage() {
                     />
                   </div>
 
-                  {/* garment type */}
+                  {/* garmentType — gender bucket */}
                   <div>
-                    <label className="text-xs text-white/40 mb-1 block">Type *</label>
+                    <label className="text-xs text-white/40 mb-1 block">Gender Type *</label>
                     <select
                       value={form.garmentType}
                       onChange={(e) => field('garmentType', e.target.value)}
                       className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold"
                     >
-                      <option value="">Select type</option>
-                      {GARMENT_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {TYPE_EMOJI[t]} {t.charAt(0).toUpperCase() + t.slice(1)}
-                        </option>
+                      <option value="">Select gender type</option>
+                      {GENDER_TYPES.map((gt) => (
+                        <option key={gt} value={gt}>{GENDER_LABELS[gt]}</option>
                       ))}
                     </select>
                   </div>
 
-                  {/* category */}
+                  {/* type — product label badge */}
                   <div>
-                    <label className="text-xs text-white/40 mb-1 block">Category *</label>
-                    <select
-                      value={form.category}
-                      onChange={(e) => field('category', e.target.value)}
+                    <label className="text-xs text-white/40 mb-1 block">Product Type</label>
+                    <input
+                      value={form.type}
+                      onChange={(e) => field('type', e.target.value)}
                       className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold"
-                    >
-                      <option value="">Select category</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                      ))}
-                    </select>
+                      placeholder="e.g. T-Shirt, Hoodie, Jogger"
+                    />
                   </div>
 
                   {/* base price */}
@@ -348,6 +356,42 @@ export default function AdminGarmentsPage() {
                       placeholder="e.g. 100% ring-spun cotton"
                     />
                   </div>
+
+                  {/* Product image */}
+                  <div className="sm:col-span-2">
+                    <label className="text-xs text-white/40 mb-1 block">Product Image</label>
+                    <div className="flex gap-3 items-start">
+                      <input
+                        value={form.imageUrl}
+                        onChange={(e) => field('imageUrl', e.target.value)}
+                        className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold"
+                        placeholder="https://... (paste URL or upload below)"
+                      />
+                      {form.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={form.imageUrl}
+                          alt="preview"
+                          className="w-12 h-12 rounded-lg object-cover border border-white/10 shrink-0"
+                        />
+                      )}
+                    </div>
+                    <label className={`mt-2 flex items-center gap-2 w-fit cursor-pointer text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                      uploading
+                        ? 'border-white/10 text-white/30 cursor-not-allowed'
+                        : 'border-white/20 text-white/50 hover:border-gold/40 hover:text-gold'
+                    }`}>
+                      <Upload className="w-3.5 h-3.5" />
+                      {uploading ? 'Uploading…' : 'Upload to S3'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploading}
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 justify-end">
@@ -367,98 +411,105 @@ export default function AdminGarmentsPage() {
             <p className="text-white/30 text-center py-16">Loading…</p>
           ) : (
             <div className="space-y-8">
-              {[...grouped, ...(uncategorised.length ? [{ cat: 'other' as const, label: 'Other', items: uncategorised }] : [])].map(({ cat, label, items }) => (
-                <div key={cat}>
+              {[
+                ...grouped.filter((g) => g.items.length > 0),
+                ...(uncategorised.length ? [{ gt: 'other' as GenderType, label: 'Other', items: uncategorised }] : []),
+              ].map(({ gt, label, items }) => (
+                <div key={gt}>
                   <h3 className="text-xs text-gold tracking-[0.25em] uppercase mb-3">{label}</h3>
                   <div className="bg-surface border border-white/10 rounded-2xl overflow-hidden">
-                    {items.length === 0 ? (
-                      <p className="text-white/30 text-sm text-center py-8">No garments in this category.</p>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
-                            <th className="px-5 py-3 text-left">Garment</th>
-                            <th className="px-5 py-3 text-left hidden md:table-cell">Type</th>
-                            <th className="px-5 py-3 text-left hidden sm:table-cell">Price</th>
-                            <th className="px-5 py-3 text-left">Status</th>
-                            <th className="px-5 py-3 text-left hidden lg:table-cell">Home Page</th>
-                            <th className="px-5 py-3 text-left">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((g) => (
-                            <tr key={g.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                              <td className="px-5 py-4">
-                                <p className="font-medium flex items-center gap-2">
-                                  <span>{TYPE_EMOJI[(g.garmentType as GarmentTypeKey)] ?? '👕'}</span>
-                                  {g.name}
-                                </p>
-                                {g.description && (
-                                  <p className="text-white/40 text-xs mt-0.5 line-clamp-1">{g.description}</p>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+                          <th className="px-5 py-3 text-left">Garment</th>
+                          <th className="px-5 py-3 text-left hidden md:table-cell">Type</th>
+                          <th className="px-5 py-3 text-left hidden sm:table-cell">Price</th>
+                          <th className="px-5 py-3 text-left">Status</th>
+                          <th className="px-5 py-3 text-left hidden lg:table-cell">Home Page</th>
+                          <th className="px-5 py-3 text-left">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((g) => (
+                          <tr key={g.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
+                            <td className="px-5 py-4">
+                              <p className="font-medium flex items-center gap-2">
+                                {g.imageUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={g.imageUrl} alt={g.name} className="w-8 h-8 rounded-md object-cover border border-white/10 shrink-0" />
+                                ) : (
+                                  <span>👕</span>
                                 )}
-                              </td>
-                              <td className="px-5 py-4 text-white/50 hidden md:table-cell capitalize">
-                                {g.garmentType}
-                              </td>
-                              <td className="px-5 py-4 text-gold font-bold hidden sm:table-cell">
-                                ₹{g.basePrice?.toLocaleString('en-IN')}
-                              </td>
-                              <td className="px-5 py-4">
-                                <Badge
-                                  label={g.active ? 'Active' : 'Inactive'}
-                                  color={g.active ? 'green' : 'gray'}
-                                />
-                              </td>
-                              <td className="px-5 py-4 hidden lg:table-cell">
+                                {g.name}
+                              </p>
+                              {g.description && (
+                                <p className="text-white/40 text-xs mt-0.5 line-clamp-1">{g.description}</p>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 text-white/50 hidden md:table-cell capitalize">
+                              {g.type ?? g.garmentType}
+                            </td>
+                            <td className="px-5 py-4 text-gold font-bold hidden sm:table-cell">
+                              ₹{g.basePrice?.toLocaleString('en-IN')}
+                            </td>
+                            <td className="px-5 py-4">
+                              <Badge
+                                label={g.active ? 'Active' : 'Inactive'}
+                                color={g.active ? 'green' : 'gray'}
+                              />
+                            </td>
+                            <td className="px-5 py-4 hidden lg:table-cell">
+                              <button
+                                onClick={() => handleToggleFeatured(g)}
+                                title={g.featured ? 'Remove from home page' : 'Add to home page'}
+                                disabled={!g.active}
+                                className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                  g.featured && g.active
+                                    ? 'border-gold/50 text-gold bg-gold/10 hover:bg-gold/20'
+                                    : 'border-white/10 text-white/30 hover:border-white/30 disabled:opacity-40 disabled:cursor-not-allowed'
+                                }`}
+                              >
+                                <Globe className="w-3 h-3" />
+                                {g.featured && g.active ? 'Showing' : 'Hidden'}
+                              </button>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => handleToggleFeatured(g)}
-                                  title={g.featured ? 'Remove from home page' : 'Add to home page'}
-                                  disabled={!g.active}
-                                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                                    g.featured && g.active
-                                      ? 'border-gold/50 text-gold bg-gold/10 hover:bg-gold/20'
-                                      : 'border-white/10 text-white/30 hover:border-white/30 disabled:opacity-40 disabled:cursor-not-allowed'
-                                  }`}
+                                  onClick={() => openEdit(g)}
+                                  title="Edit"
+                                  className="p-1.5 rounded-lg text-white/40 hover:text-gold hover:bg-gold/10 transition-colors"
                                 >
-                                  <Globe className="w-3 h-3" />
-                                  {g.featured && g.active ? 'Showing' : 'Hidden'}
+                                  <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                              </td>
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleActive(g)}
+                                  title={g.active ? 'Deactivate' : 'Activate'}
+                                  className="p-1.5 rounded-lg text-white/40 hover:text-gold hover:bg-gold/10 transition-colors"
+                                >
+                                  {g.active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                                {(user?.role ?? 0) & 2 ? (
                                   <button
-                                    onClick={() => openEdit(g)}
-                                    title="Edit"
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-gold hover:bg-gold/10 transition-colors"
+                                    onClick={() => handleDelete(g)}
+                                    title="Delete"
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                                   >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
-                                  <button
-                                    onClick={() => handleToggleActive(g)}
-                                    title={g.active ? 'Deactivate' : 'Activate'}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-gold hover:bg-gold/10 transition-colors"
-                                  >
-                                    {g.active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                  </button>
-                                  {(user?.role ?? 0) & 2 ? (
-                                    <button
-                                      onClick={() => handleDelete(g)}
-                                      title="Delete"
-                                      className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  ) : null}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))}
+              {garments.length === 0 && !loading && (
+                <p className="text-white/30 text-center py-16">No garments yet. Add one above.</p>
+              )}
             </div>
           )}
         </div>

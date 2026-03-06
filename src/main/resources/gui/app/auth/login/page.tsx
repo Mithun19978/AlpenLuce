@@ -1,22 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { authApi } from '@/lib/api';
+import { authApi, cartApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
+
+  const oauthError = searchParams.get('error');
 
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    oauthError ? 'Google sign-in failed. Please try again or use username/password.' : ''
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,11 +33,21 @@ export default function LoginPage() {
       const { accessToken, refreshToken, role } = res.data;
       login({ accessToken, refreshToken }, { username: form.username, role });
 
+      // Restore pending cart item selected before login
+      const pendingCart = localStorage.getItem('alpenluce-pending-cart');
+      if (pendingCart) {
+        try {
+          const { garmentId, size } = JSON.parse(pendingCart);
+          await cartApi.add(garmentId, size);
+        } catch { /* silently fail */ }
+        localStorage.removeItem('alpenluce-pending-cart');
+      }
+
       // Route by role (bitwise)
-      if (role & 2) router.push('/admin');
-      else if (role & 4) router.push('/technical');
-      else if (role & 8) router.push('/support');
-      else router.push('/dashboard');
+      if      (role & 2) router.push('/admin/dashboard');
+      else if (role & 4) router.push('/tech/dashboard');
+      else if (role & 8) router.push('/support/dashboard');
+      else               router.push('/home');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || 'Invalid credentials. Please try again.');
@@ -125,5 +140,17 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

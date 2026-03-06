@@ -40,7 +40,7 @@ node_modules/
 out/
 
 # google credential
-src/main/resources/security/google_credential/application-secret.properties
+src/main/resources/security/api_secret_keys/application-secret.properties
 
 # Frontend build
 /frontend/.next/

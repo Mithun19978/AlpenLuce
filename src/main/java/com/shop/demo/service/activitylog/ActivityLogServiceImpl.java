@@ -54,26 +54,14 @@ public class ActivityLogServiceImpl implements ActivityLogService {
     @Override public void logRegister(Long userId, String ip) {
         logEvent(userId, 1, "user_register", null, ip);
     }
-    @Override public void logDesignUpload(Long userId, Long customizationId, String area, String ip) {
-        logEvent(userId, 1, "design_upload", Map.of("customization_id", customizationId, "area", area), ip);
-    }
-    @Override public void logSubmitReview(Long userId, Long customizationId, String ip) {
-        logEvent(userId, 1, "submit_review", Map.of("customization_id", customizationId), ip);
-    }
-    @Override public void logCartAdd(Long userId, Long customizationId, String ip) {
-        logEvent(userId, 1, "cart_add", Map.of("customization_id", customizationId), ip);
+    @Override public void logCartAdd(Long userId, Long garmentId, String ip) {
+        logEvent(userId, 1, "cart_add", Map.of("garment_id", garmentId), ip);
     }
     @Override public void logPurchase(Long userId, Long orderId, String ip) {
         logEvent(userId, 1, "purchase", Map.of("order_id", orderId), ip);
     }
-    @Override public void logDesignApprove(Long techUserId, Long customizationId, Double price, String ip) {
-        logEvent(techUserId, 4, "design_approve", Map.of("customization_id", customizationId, "price", price), ip);
-    }
-    @Override public void logDesignReject(Long techUserId, Long customizationId, String reason, String ip) {
-        logEvent(techUserId, 4, "design_reject", Map.of("customization_id", customizationId, "reason", reason), ip);
-    }
-    @Override public void logGarmentAdd(Long techUserId, Long garmentId, String ip) {
-        logEvent(techUserId, 4, "garment_add", Map.of("garment_id", garmentId), ip);
+    @Override public void logGarmentAdd(Long adminUserId, Long garmentId, String ip) {
+        logEvent(adminUserId, 6, "garment_add", Map.of("garment_id", garmentId), ip);
     }
     @Override public void logTicketOpen(Long supportUserId, Long ticketId, String ip) {
         logEvent(supportUserId, 8, "ticket_open", Map.of("ticket_id", ticketId), ip);

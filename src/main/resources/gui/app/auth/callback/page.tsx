@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
+import { cartApi } from '@/lib/api';
 
 function CallbackContent() {
   const router = useRouter();
@@ -23,10 +24,22 @@ function CallbackContent() {
 
     login({ accessToken, refreshToken }, { username, role });
 
-    if (role & 2)      router.replace('/admin');
-    else if (role & 4) router.replace('/technical');
-    else if (role & 8) router.replace('/support');
-    else               router.replace('/dashboard');
+    const pending = localStorage.getItem('alpenluce-pending-cart');
+    const redirect = () => {
+      if      (role & 2) router.replace('/admin/dashboard');
+      else if (role & 4) router.replace('/tech/dashboard');
+      else if (role & 8) router.replace('/support/dashboard');
+      else               router.replace('/home');
+    };
+
+    if (pending) {
+      const { garmentId, size } = JSON.parse(pending);
+      cartApi.add(garmentId, size)
+        .catch(() => {})
+        .finally(() => { localStorage.removeItem('alpenluce-pending-cart'); redirect(); });
+    } else {
+      redirect();
+    }
   }, [searchParams, login, router]);
 
   return (

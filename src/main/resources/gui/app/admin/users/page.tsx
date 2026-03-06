@@ -3,20 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, Search, Shield } from 'lucide-react';
+import { Users, Search, Shield, Package, Megaphone, Activity, Ticket, Tag, LayoutDashboard, BarChart3 } from 'lucide-react';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/lib/store';
 import { userApi } from '@/lib/api';
 import type { User } from '@/types';
-import { LayoutDashboard, Activity, Ticket } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/activity', label: 'Activity Logs', icon: Activity },
-  { href: '/admin/tickets', label: 'Escalated Tickets', icon: Ticket },
+  { href: '/admin/dashboard',  label: 'Dashboard',         icon: LayoutDashboard },
+  { href: '/admin/inventory',  label: 'Inventory',         icon: Package },
+  { href: '/admin/users',      label: 'Users',             icon: Users },
+  { href: '/admin/homepage',   label: 'Advertising',       icon: Megaphone },
+  { href: '/admin/categories', label: 'Categories',        icon: Tag },
+  { href: '/admin/activity',   label: 'Activity Logs',     icon: Activity },
+  { href: '/admin/tickets',    label: 'Escalated Tickets', icon: Ticket },
+  { href: '/admin/financial',  label: 'Financial',         icon: BarChart3 },
 ];
 
 const ROLE_LABELS: Record<number, string> = {

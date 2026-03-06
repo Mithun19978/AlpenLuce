@@ -18,12 +18,17 @@ export interface Garment {
   name: string;
   description: string;
   garmentType: string;
+  type?: string;
   basePrice: number;
   available?: boolean;
-  category?: string;
+  categoryId?: number | null;
   baseColor?: string;
   gsm?: number | null;
   fabricDescription?: string;
+  sizes?: string;
+  imageUrl?: string;
+  stockQuantity?: number;
+  costPrice?: number;
   active?: boolean;
   featured?: boolean;
 }
@@ -34,51 +39,40 @@ export interface Category {
   active: boolean;
   depth: number;
   parentId?: number | null;
-}
-
-export interface DesignLayer {
-  area: string;
-  designText?: string;
-  colorHex: string;
-  fontFamily?: string;
-  fontSize?: number;
-  positionX?: number;
-  positionY?: number;
-  scale?: number;
-  rotation?: number;
-}
-
-export interface Customization {
-  id: number;
-  garmentId: number;
-  userId: number;
-  status: string;
-  notes?: string;
-  approvedPrice?: number;
-  technicalNotes?: string;
-  layers: DesignLayer[];
-  createdAt: string;
+  displayOrder?: number;
 }
 
 export interface CartItem {
   id: number;
-  customizationId: number;
-  price?: number;
+  userId: number;
+  garmentId: number;
+  size: string;
+  quantity: number;
   addedAt: string;
 }
 
 export interface OrderItem {
   id: number;
-  customizationId: number;
-  price: number;
+  orderId: number;
+  garmentId: number;
+  size: string;
+  quantity: number;
+  unitPrice: number;
 }
 
 export interface Order {
   id: number;
   userId: number;
-  status: string;
-  totalPrice: number;
-  items: OrderItem[];
+  totalAmount: number;
+  paymentStatus: string;
+  paymentMethod?: string;
+  paymentRef?: string;
+  shippingName?: string;
+  shippingAddress?: string;
+  shippingCity?: string;
+  shippingPincode?: string;
+  shippingPhone?: string;
+  orderStatus: string;
   createdAt: string;
 }
 
@@ -96,10 +90,11 @@ export interface SupportTicket {
 export interface ActivityLog {
   id: number;
   userId: number;
-  username: string;
-  action: string;
-  details?: string;
-  timestamp: string;
+  roleMask: number;
+  eventType: string;
+  metadata?: string;
+  ipAddress?: string;
+  createdAt: string;
 }
 
 // Zustand store interfaces
@@ -117,14 +112,4 @@ export interface CartStore {
   addItem: (item: CartItem) => void;
   removeItem: (id: number) => void;
   clear: () => void;
-}
-
-export interface CustomizerStore {
-  garmentId: number | null;
-  selectedArea: string | null;
-  layers: DesignLayer[];
-  setGarmentId: (id: number | null) => void;
-  setSelectedArea: (area: string | null) => void;
-  updateLayer: (area: string, updates: Partial<DesignLayer>) => void;
-  resetLayers: () => void;
 }

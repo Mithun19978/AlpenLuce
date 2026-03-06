@@ -206,6 +206,20 @@
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
+        <!-- AWS SDK v2 — S3 for product image storage -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.26.12</version>
+        </dependency>
+
+        <!-- Razorpay — Payment Processing (India + International) -->
+        <dependency>
+            <groupId>com.razorpay</groupId>
+            <artifactId>razorpay-java</artifactId>
+            <version>1.4.7</version>
+        </dependency>
+
 		<!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

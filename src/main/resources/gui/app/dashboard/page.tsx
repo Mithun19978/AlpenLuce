@@ -4,18 +4,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
-import { ShoppingBag, Layers, Ticket, LogOut, LayoutDashboard } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, Ticket, LogOut, LayoutDashboard, PackageCheck } from 'lucide-react';
 import Link from 'next/link';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import Badge, { statusBadge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/lib/store';
-import { customizationApi, cartApi, ticketApi } from '@/lib/api';
-import type { Customization, CartItem, SupportTicket } from '@/types';
+import { cartApi, ticketApi, orderApi } from '@/lib/api';
+import type { CartItem, SupportTicket, Order } from '@/types';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/customize', label: 'New Design', icon: Layers },
+  { href: '/shop', label: 'Shop', icon: ShoppingCart },
   { href: '/cart', label: 'Cart', icon: ShoppingBag },
+  { href: '/orders', label: 'My Orders', icon: PackageCheck },
   { href: '/tickets', label: 'My Tickets', icon: Ticket },
 ];
 
@@ -28,17 +29,25 @@ const fadeUp: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
+const ORDER_STATUS_COLORS: Record<string, string> = {
+  PLACED:     'bg-blue-500/20 text-blue-400',
+  PROCESSING: 'bg-yellow-500/20 text-yellow-400',
+  SHIPPED:    'bg-purple-500/20 text-purple-400',
+  DELIVERED:  'bg-green-500/20 text-green-400',
+  CANCELLED:  'bg-red-500/20 text-red-400',
+};
+
 export default function UserDashboard() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
 
-  const [customizations, setCustomizations] = useState<Customization[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders]   = useState<Order[]>([]);
+  const [cart, setCart]       = useState<CartItem[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
   useEffect(() => {
     if (!user) { router.push('/auth/login'); return; }
-    customizationApi.getMine().then((r) => setCustomizations(r.data)).catch(() => {});
+    orderApi.getMine().then((r) => setOrders(r.data)).catch(() => {});
     cartApi.getMine().then((r) => setCart(r.data)).catch(() => {});
     ticketApi.getMine().then((r) => setTickets(r.data)).catch(() => {});
   }, [user, router]);
@@ -48,15 +57,13 @@ export default function UserDashboard() {
     router.push('/auth/login');
   };
 
+  const delivered = orders.filter((o) => o.orderStatus === 'DELIVERED').length;
+
   const stats = [
-    { label: 'Designs', value: customizations.length, color: 'text-gold' },
-    { label: 'In Cart', value: cart.length, color: 'text-green-400' },
-    { label: 'Tickets', value: tickets.length, color: 'text-blue-400' },
-    {
-      label: 'Approved',
-      value: customizations.filter((c) => c.status === 'APPROVED').length,
-      color: 'text-gold',
-    },
+    { label: 'Orders',    value: orders.length,  color: 'text-gold' },
+    { label: 'In Cart',   value: cart.length,    color: 'text-green-400' },
+    { label: 'Tickets',   value: tickets.length, color: 'text-blue-400' },
+    { label: 'Delivered', value: delivered,       color: 'text-gold' },
   ];
 
   return (
@@ -74,7 +81,7 @@ export default function UserDashboard() {
             <div>
               <p className="text-gold text-xs tracking-[0.3em] uppercase mb-1">Dashboard</p>
               <h1 className="text-2xl font-black">
-                Welcome, {user?.username ?? 'Designer'}
+                Welcome, {user?.username ?? 'Shopper'}
               </h1>
             </div>
             <button
@@ -105,7 +112,7 @@ export default function UserDashboard() {
             ))}
           </motion.div>
 
-          {/* Recent Designs */}
+          {/* Recent Orders */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,39 +120,42 @@ export default function UserDashboard() {
             className="bg-surface border border-white/10 rounded-2xl p-6 mb-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold">My Designs</h2>
-              <Link href="/customize" className="text-gold text-sm hover:underline">
-                + New Design
+              <h2 className="font-bold">Recent Orders</h2>
+              <Link href="/orders" className="text-gold text-sm hover:underline">
+                View all
               </Link>
             </div>
 
-            {customizations.length === 0 ? (
+            {orders.length === 0 ? (
               <p className="text-white/30 text-sm py-8 text-center">
-                No designs yet.{' '}
-                <Link href="/customize" className="text-gold hover:underline">
-                  Start designing
+                No orders yet.{' '}
+                <Link href="/shop" className="text-gold hover:underline">
+                  Browse the shop
                 </Link>
               </p>
             ) : (
               <div className="space-y-3">
-                {customizations.slice(0, 5).map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between py-3 border-b border-white/5 last:border-0"
+                {orders.slice(0, 5).map((o) => (
+                  <Link
+                    key={o.id}
+                    href={`/orders?id=${o.id}`}
+                    className="flex items-center justify-between py-3 border-b border-white/5 last:border-0 hover:bg-white/3 rounded-lg px-2 -mx-2 transition-colors"
                   >
                     <div>
-                      <p className="text-sm font-medium">Design #{c.id}</p>
-                      <p className="text-white/40 text-xs mt-0.5">{c.notes || 'No notes'}</p>
+                      <p className="text-sm font-medium">Order #{o.id}</p>
+                      <p className="text-white/40 text-xs mt-0.5">
+                        {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      {c.approvedPrice && (
-                        <span className="text-gold font-bold text-sm">
-                          ${(c.approvedPrice / 100).toFixed(2)}
-                        </span>
-                      )}
-                      <Badge {...statusBadge(c.status)} />
+                      <span className="text-gold font-bold text-sm">
+                        ₹{o.totalAmount.toLocaleString('en-IN')}
+                      </span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ORDER_STATUS_COLORS[o.orderStatus] ?? 'bg-white/10 text-white/50'}`}>
+                        {o.orderStatus}
+                      </span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

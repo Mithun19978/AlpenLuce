@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Globe, Shirt, LayoutDashboard, Users, Activity, Ticket,
-  Eye, EyeOff, CheckCircle2, XCircle, Tag,
+  Globe, Package, Megaphone, Users, Activity, Ticket,
+  Eye, EyeOff, CheckCircle2, XCircle, Tag, LayoutDashboard, BarChart3,
 } from 'lucide-react';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import { useAuthStore } from '@/lib/store';
@@ -13,13 +13,14 @@ import { garmentAdminApi } from '@/lib/api';
 import type { Garment } from '@/types';
 
 const NAV_ITEMS = [
-  { href: '/admin',            label: 'Overview',          icon: LayoutDashboard },
+  { href: '/admin/dashboard',  label: 'Dashboard',         icon: LayoutDashboard },
+  { href: '/admin/inventory',  label: 'Inventory',         icon: Package },
   { href: '/admin/users',      label: 'Users',             icon: Users },
-  { href: '/admin/garments',   label: 'Garments',          icon: Shirt },
-  { href: '/admin/homepage',   label: 'Home Page',         icon: Globe },
+  { href: '/admin/homepage',   label: 'Advertising',       icon: Megaphone },
   { href: '/admin/categories', label: 'Categories',        icon: Tag },
   { href: '/admin/activity',   label: 'Activity Logs',     icon: Activity },
   { href: '/admin/tickets',    label: 'Escalated Tickets', icon: Ticket },
+  { href: '/admin/financial',  label: 'Financial',         icon: BarChart3 },
 ];
 
 const CATEGORIES = [
@@ -100,8 +101,8 @@ export default function AdminHomepagePage() {
             className="grid grid-cols-3 gap-4 mb-8"
           >
             {CATEGORIES.map(({ key, label }) => {
-              const shown  = garments.filter((g) => g.category === key && g.active && g.featured).length;
-              const total  = garments.filter((g) => g.category === key).length;
+              const shown  = garments.filter((g) => g.garmentType === key && g.active && g.featured).length;
+              const total  = garments.filter((g) => g.garmentType === key).length;
               return (
                 <div key={key} className="bg-surface border border-white/10 rounded-2xl p-4 text-center">
                   <div className="text-2xl font-black text-gold">{shown}</div>
@@ -135,7 +136,7 @@ export default function AdminHomepagePage() {
           ) : (
             <div className="space-y-8">
               {CATEGORIES.map(({ key, label, tagline }, idx) => {
-                const items = garments.filter((g) => g.category === key);
+                const items = garments.filter((g) => g.garmentType === key);
                 return (
                   <motion.div
                     key={key}
@@ -182,6 +183,8 @@ export default function AdminHomepagePage() {
                                     </p>
                                     <p className="text-white/30 text-xs">
                                       ₹{g.basePrice?.toLocaleString('en-IN')}
+                                      {g.baseColor && <span className="ml-2">· {g.baseColor}</span>}
+                                      {g.sizes && <span className="ml-2">· {g.sizes}</span>}
                                       {!g.active && (
                                         <span className="ml-2 text-red-400/60">inactive — enable first</span>
                                       )}

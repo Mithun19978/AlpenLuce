@@ -14,8 +14,11 @@ public class OrderItemEntity {
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    @Column(name = "customization_id", nullable = false)
-    private Long customizationId;
+    @Column(name = "garment_id", nullable = false)
+    private Long garmentId;
+
+    @Column(name = "size", nullable = false, length = 10)
+    private String size;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
@@ -27,8 +30,10 @@ public class OrderItemEntity {
     public void setId(Long id) { this.id = id; }
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long orderId) { this.orderId = orderId; }
-    public Long getCustomizationId() { return customizationId; }
-    public void setCustomizationId(Long customizationId) { this.customizationId = customizationId; }
+    public Long getGarmentId() { return garmentId; }
+    public void setGarmentId(Long garmentId) { this.garmentId = garmentId; }
+    public String getSize() { return size; }
+    public void setSize(String size) { this.size = size; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public BigDecimal getUnitPrice() { return unitPrice; }

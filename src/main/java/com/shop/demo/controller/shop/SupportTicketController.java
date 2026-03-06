@@ -41,10 +41,15 @@ public class SupportTicketController {
 
         if (userId == null) return ResponseEntity.status(401).build();
 
+        // issueType is used as the ticket title (e.g. QUALITY_ISSUE, WRONG_ITEM, DAMAGED, OTHER)
+        String resolvedTitle = (request.issueType != null && !request.issueType.isBlank())
+                ? request.issueType
+                : (request.title != null ? request.title : "OTHER");
+
         SupportTicketEntity t = new SupportTicketEntity();
         t.setUserId(userId);
         t.setOrderId(request.orderId);
-        t.setTitle(request.title);
+        t.setTitle(resolvedTitle);
         t.setDescription(request.description);
         t.setPhotoUrls(request.photoUrls);
         t.setStatus(Status.OPEN);
@@ -121,9 +126,10 @@ public class SupportTicketController {
     // ── DTOs ─────────────────────────────────────────────────────
     public static class ReportRequest {
         public Long orderId;
-        @NotBlank public String title;
+        public String title;       // optional — kept for backward compat
+        public String issueType;   // frontend sends this (QUALITY_ISSUE, WRONG_ITEM, DAMAGED, OTHER)
         public String description;
-        public String photoUrls; // JSON array of Cloudinary URLs
+        public String photoUrls;
     }
 
     public static class DecideRequest {
